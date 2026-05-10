@@ -1,65 +1,67 @@
-import Image from "next/image";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+import { auth } from "@/lib/auth";
 
-export default function Home() {
+const ROLE_HOME: Record<string, string> = {
+  SUPER_ADMIN: "/admin",
+  SR_ADMIN: "/sr",
+  CLIENT_ADMIN: "/client",
+  EMPLOYEE: "/m",
+};
+
+export default async function Home() {
+  // ログイン中ならロール別ホームへ自動遷移
+  const session = await auth();
+  if (session?.user) {
+    redirect(ROLE_HOME[session.user.role] ?? "/login");
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="min-h-screen flex items-center justify-center p-6 bg-gradient-to-br from-slate-50 to-slate-200">
+      <div className="max-w-2xl w-full bg-white rounded-2xl shadow-lg p-8 sm:p-12">
+        <div className="text-xs font-semibold tracking-widest text-slate-500 mb-2">
+          HR EVA
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">
+          社労士向け人事評価システム
+        </h1>
+        <p className="text-slate-600 mb-8">
+          評価制度の作成から運用、従業員のセルフサービスまで一気通貫で管理します。
+        </p>
+
+        <div className="grid sm:grid-cols-2 gap-3 mb-8">
+          <Feature title="マルチテナント" desc="社労士 → クライアント企業 → 従業員の階層管理" />
+          <Feature title="柔軟な評価制度" desc="達成度評価から将来は360度・MBOまで拡張" />
+          <Feature title="モバイル対応" desc="従業員はスマホで評価ステータス・賃金・有給を確認" />
+          <Feature title="進捗の可視化" desc="評価期間ごとの進捗を一覧で把握" />
         </div>
-      </main>
+
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center w-full sm:w-auto rounded-lg bg-slate-900 text-white px-6 py-3 font-semibold hover:bg-slate-700 transition-colors"
+        >
+          ログインへ進む
+        </Link>
+
+        <div className="mt-8 pt-6 border-t border-slate-200 text-xs text-slate-500">
+          <div className="font-semibold mb-1">デモアカウント (password: password123)</div>
+          <ul className="space-y-0.5">
+            <li>Super Admin: admin@example.com</li>
+            <li>社労士: sr@example.com</li>
+            <li>クライアント管理: client@example.com</li>
+            <li>従業員: employee@example.com</li>
+          </ul>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function Feature({ title, desc }: { title: string; desc: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 p-3">
+      <div className="font-semibold text-slate-800 text-sm">{title}</div>
+      <div className="text-xs text-slate-600 mt-0.5">{desc}</div>
     </div>
   );
 }

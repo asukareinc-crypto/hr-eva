@@ -1,0 +1,73 @@
+import Link from "next/link";
+import { requireClientAdmin } from "@/lib/guards";
+import { prisma } from "@/lib/prisma";
+import { Card, PageHeader } from "@/components/Shell";
+import { Badge, Empty } from "@/components/ui";
+
+const STATUS_TONE: Record<string, "slate" | "blue" | "green" | "yellow"> = {
+  DRAFT: "slate",
+  OPEN: "green",
+  CLOSED: "yellow",
+};
+const STATUS_LABEL: Record<string, string> = {
+  DRAFT: "下書き",
+  OPEN: "運用中",
+  CLOSED: "終了",
+};
+
+export default async function ClientPeriodsPage() {
+  const session = await requireClientAdmin();
+  const periods = await prisma.evaluationPeriod.findMany({
+    where: { clientId: session.user.clientId! },
+    orderBy: { startDate: "desc" },
+    include: {
+      template: true,
+      _count: { select: { evaluations: true } },
+    },
+  });
+
+  return (
+    <div className="space-y-4">
+      <PageHeader
+        title="評価期間"
+        description="社労士が設定した評価期間に対象者を割り当て、進捗を確認します"
+      />
+
+      {periods.length === 0 ? (
+        <Empty message="評価期間がまだ設定されていません。社労士が設定すると表示されます。" />
+      ) : (
+        <Card>
+          <table className="w-full text-sm">
+            <thead className="bg-slate-50 text-slate-600 text-xs">
+              <tr>
+                <th className="text-left px-4 py-2">期間名</th>
+                <th className="text-left px-4 py-2">制度</th>
+                <th className="text-left px-4 py-2">期間</th>
+                <th className="text-left px-4 py-2">対象数</th>
+                <th className="text-left px-4 py-2">状態</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {periods.map((p) => (
+                <tr key={p.id}>
+                  <td className="px-4 py-2 font-medium">
+                    <Link className="hover:underline" href={`/client/periods/${p.id}`}>{p.name}</Link>
+                  </td>
+                  <td className="px-4 py-2">{p.template.name}</td>
+                  <td className="px-4 py-2 text-xs">
+                    {p.startDate.toISOString().slice(0, 10)} 〜{" "}
+                    {p.endDate.toISOString().slice(0, 10)}
+                  </td>
+                  <td className="px-4 py-2">{p._count.evaluations}</td>
+                  <td className="px-4 py-2">
+                    <Badge tone={STATUS_TONE[p.status]}>{STATUS_LABEL[p.status]}</Badge>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
+      )}
+    </div>
+  );
+}

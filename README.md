@@ -1,36 +1,45 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# HR EVA
 
-## Getting Started
+社労士監修の人事評価＋パルスサーベイ SaaS（マルチテナント）。
 
-First, run the development server:
+## スタック
+- Next.js 16 (App Router) + TypeScript
+- Prisma 7 + PostgreSQL 16
+- NextAuth v5 (Credentials)
+- Tailwind CSS v4
+
+## ロール
+- `SUPER_ADMIN` 運営
+- `SR_ADMIN` 社労士
+- `CLIENT_ADMIN` クライアント企業管理者
+- `EMPLOYEE` 従業員
+
+## セットアップ
 
 ```bash
+# Postgres 16 起動 (初回のみ)
+brew services start postgresql@16
+
+# 依存インストール
+npm install
+
+# DB マイグレーション + シード
+npm run db:migrate
+npm run db:seed
+
+# 開発サーバー起動 (port 3014)
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## デモアカウント (password: `password123`)
+- `admin@example.com` Super Admin
+- `sr@example.com` 社労士
+- `client@example.com` クライアント管理者
+- `employee@example.com` 従業員
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## スクリプト
+- `npm run dev` 開発サーバー
+- `npm run db:migrate` マイグレーション
+- `npm run db:generate` Prisma クライアント生成
+- `npm run db:seed` シード投入
+- `npm run db:studio` Prisma Studio (DB GUI)

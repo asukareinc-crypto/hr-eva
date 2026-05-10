@@ -1,0 +1,606 @@
+// HR Evaluation System - Prisma Schema
+// 4 roles: SUPER_ADMIN / SR_ADMIN (社労士) / CLIENT_ADMIN (クライアント管理者) / EMPLOYEE (従業員)
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// Tenant layer
+// ============================================================
+
+model Tenant {
+  id        String   @id @default(cuid())
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users               User[]
+  clients             Client[]
+  evaluationTemplates EvaluationTemplate[]
+  apiKeys             TenantApiKey[]
+}
+
+// テナント（社労士事務所）別の外部サービスAPIキー（暗号化保存）
+// → 社労士事務所が複数クライアント横断で使うサービス（AI / 給与ソフト連携 等）
+enum TenantApiService {
+  RESEND          // メール送信（テナント既定の送信元）
+  OPENAI          // OpenAI API
+  ANTHROPIC       // Anthropic Claude API
+  YAYOI_PAYROLL   // 弥生給与
+  FREEE           // freee 人事労務
+  MONEY_FORWARD   // マネーフォワード
+  CUSTOM          // その他カスタム
+}
+
+model TenantApiKey {
+  id              String           @id @default(cuid())
+  tenantId        String
+  service         TenantApiService
+  label           String           // 表示名（例: "メイン Resend Key"）
+  encryptedValue  String           @db.Text  // AES-256-GCM 暗号化
+  metadata        String?          @db.Text  // JSON: 追加設定（送信元アドレス等）
+  isActive        Boolean          @default(true)
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, service])
+  @@index([tenantId])
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  tenantId  String
+  name      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  users             User[]
+  employees         Employee[]
+  departments       Department[]
+  positions         Position[]
+  grades            Grade[]
+  evaluationPeriods EvaluationPeriod[]
+  pulseQuestions    PulseQuestion[]
+  pulseSurveys      PulseSurvey[]
+  apiKeys           ClientApiKey[]
+
+  @@index([tenantId])
+}
+
+// クライアント企業別の外部サービスAPIキー（暗号化保存）
+// → 会社が日常で使う社内ツール（Slack / LINE / ChatWork 等）
+enum ClientApiService {
+  SLACK_WEBHOOK   // Slack Incoming Webhook
+  LINE_NOTIFY     // LINE Notify
+  CHATWORK        // ChatWork API
+  RESEND          // 会社独自のメール送信ドメイン（任意）
+  CUSTOM          // その他カスタム
+}
+
+model ClientApiKey {
+  id              String           @id @default(cuid())
+  clientId        String
+  service         ClientApiService
+  label           String
+  encryptedValue  String           @db.Text
+  metadata        String?          @db.Text
+  isActive        Boolean          @default(true)
+  lastUsedAt      DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, service])
+  @@index([clientId])
+}
+
+// ============================================================
+// Auth / User layer
+// ============================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  SR_ADMIN
+  CLIENT_ADMIN
+  EMPLOYEE
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String
+  role          UserRole
+  tenantId      String?
+  clientId      String?
+  employeeId    String?   @unique
+  isActive      Boolean   @default(true)
+  emailVerified DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: SetNull)
+  client   Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  employee Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+
+  sessions Session[]
+  accounts Account[]
+
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ============================================================
+// Employee master
+// ============================================================
+
+model Department {
+  id        String   @id @default(cuid())
+  clientId  String
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@index([clientId])
+}
+
+model Position {
+  id        String   @id @default(cuid())
+  clientId  String
+  name      String
+  rank      Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@index([clientId])
+}
+
+// 等級基準表（格付け評価用）
+model Grade {
+  id          String   @id @default(cuid())
+  clientId    String
+  rank        Int      // 1, 2, 3, ...
+  name        String   // "1等級", "5等級"
+  role        String?  @db.Text // 役割
+  description String?  @db.Text // 期待される行動・成果
+  salaryMin   Int?
+  salaryMax   Int?
+  isManager   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  client    Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  employees Employee[]
+
+  @@unique([clientId, rank])
+  @@index([clientId])
+}
+
+enum EmploymentStatus {
+  ACTIVE
+  ON_LEAVE
+  RETIRED
+}
+
+model Employee {
+  id              String           @id @default(cuid())
+  clientId        String
+  employeeCode    String
+  lastName        String
+  firstName       String
+  lastNameKana    String?
+  firstNameKana   String?
+  email           String?
+  phone           String?
+  hireDate        DateTime
+  retireDate      DateTime?
+  status          EmploymentStatus @default(ACTIVE)
+  departmentId    String?
+  positionId      String?
+  gradeId         String?
+  managerEmployeeId      String?
+  finalEvaluatorEmployeeId String?  // 最終評価者（所長）
+  birthDate       DateTime?
+  notes           String?          @db.Text
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  client     Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  position   Position?   @relation(fields: [positionId], references: [id], onDelete: SetNull)
+  grade      Grade?      @relation(fields: [gradeId], references: [id], onDelete: SetNull)
+  manager        Employee? @relation("ManagerSubordinates", fields: [managerEmployeeId], references: [id], onDelete: SetNull)
+  subordinates   Employee[] @relation("ManagerSubordinates")
+  finalEvaluator Employee? @relation("FinalEvaluator", fields: [finalEvaluatorEmployeeId], references: [id], onDelete: SetNull)
+  evaluatedAsFinal Employee[] @relation("FinalEvaluator")
+
+  user            User?
+  evaluationsAsTarget    Evaluation[]           @relation("EvaluationTarget")
+  evaluationAssignments  EvaluationAssignment[] @relation("Evaluator")
+  wageRecords     WageRecord[]
+  leaveBalances   LeaveBalance[]
+  leaveRecords    LeaveRecord[]
+  pulseResponses  PulseResponse[]
+
+  @@unique([clientId, employeeCode])
+  @@index([clientId])
+  @@index([departmentId])
+}
+
+// ============================================================
+// Evaluation
+// ============================================================
+
+enum EvaluationItemType {
+  ACHIEVEMENT       // 達成度（MVPで使用）
+  COMPETENCY        // コンピテンシー（Phase 2）
+  MBO               // 目標管理（Phase 2）
+  PEER              // 360度（Phase 2）
+}
+
+model EvaluationTemplate {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  items  EvaluationTemplateItem[]
+  periods EvaluationPeriod[]
+
+  @@index([tenantId])
+}
+
+model EvaluationTemplateItem {
+  id             String             @id @default(cuid())
+  templateId     String
+  name           String
+  description    String?            @db.Text
+  interviewPoint     String? @db.Text  // 面談時に評価者が確認すべきポイント
+  interviewQuestions String? @db.Text  // 面談で使う質問例（1行1問）
+  type           EvaluationItemType @default(ACHIEVEMENT)
+  weight         Int                @default(1)
+  maxScore       Int                @default(5)
+  sortOrder      Int                @default(0)
+
+  template EvaluationTemplate         @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  levels   EvaluationItemLevel[]
+  scores   EvaluationScore[]
+
+  @@index([templateId])
+}
+
+// 各点数の絶対評価基準（5点なら5レコード、3点なら3レコード等）
+model EvaluationItemLevel {
+  id          String  @id @default(cuid())
+  itemId      String
+  score       Int     // 1〜maxScore
+  description String  @db.Text // 「諸規則を…」のような評価基準
+
+  item EvaluationTemplateItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([itemId, score])
+  @@index([itemId])
+}
+
+enum EvaluationPeriodStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum PeriodHalf {
+  UPPER  // 上期 (11月～4月など)
+  LOWER  // 下期 (5月～10月など)
+}
+
+model EvaluationPeriod {
+  id          String                 @id @default(cuid())
+  clientId    String
+  templateId  String
+  name        String
+  half        PeriodHalf?
+  startDate   DateTime               // 評価対象期間の開始
+  endDate     DateTime               // 評価対象期間の終了
+  selfEvalDueDate     DateTime?      // 自己評価提出期限
+  primaryEvalDueDate  DateTime?      // 一次評価者提出期限
+  finalEvalDueDate    DateTime?      // 最終評価者提出期限
+  feedbackPeriodMonth Int?           // フィードバック面談実施月（例: 6, 12）
+  status      EvaluationPeriodStatus @default(DRAFT)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  client      Client             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  template    EvaluationTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  evaluations Evaluation[]
+
+  @@index([clientId])
+}
+
+enum EvaluationStatus {
+  NOT_STARTED
+  SELF_IN_PROGRESS
+  SELF_DONE
+  MANAGER_IN_PROGRESS
+  MANAGER_DONE
+  FINAL_IN_PROGRESS
+  FINAL_DONE
+  FINALIZED
+}
+
+model Evaluation {
+  id        String           @id @default(cuid())
+  periodId  String
+  employeeId String
+  status    EvaluationStatus @default(NOT_STARTED)
+  finalizedAt DateTime?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  period      EvaluationPeriod       @relation(fields: [periodId], references: [id], onDelete: Cascade)
+  employee    Employee               @relation("EvaluationTarget", fields: [employeeId], references: [id], onDelete: Cascade)
+  assignments EvaluationAssignment[]
+  feedback    FeedbackMeeting?
+
+  @@unique([periodId, employeeId])
+  @@index([employeeId])
+}
+
+enum EvaluatorRole {
+  SELF      // 自己評価
+  MANAGER   // 一次評価者（直属上司）
+  FINAL     // 最終評価者（所長）
+  PEER
+  SKIP_LEVEL
+}
+
+model EvaluationAssignment {
+  id           String        @id @default(cuid())
+  evaluationId String
+  evaluatorEmployeeId String
+  role         EvaluatorRole
+  submittedAt  DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  evaluation Evaluation         @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+  evaluator  Employee           @relation("Evaluator", fields: [evaluatorEmployeeId], references: [id], onDelete: Cascade)
+  scores     EvaluationScore[]
+
+  @@unique([evaluationId, evaluatorEmployeeId, role])
+  @@index([evaluationId])
+}
+
+model EvaluationScore {
+  id           String  @id @default(cuid())
+  assignmentId String
+  itemId       String
+  score        Int?
+  comment      String? @db.Text
+
+  assignment EvaluationAssignment   @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  item       EvaluationTemplateItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, itemId])
+  @@index([assignmentId])
+}
+
+// フィードバック面談シート（評価1件につき1シート）
+model FeedbackMeeting {
+  id            String    @id @default(cuid())
+  evaluationId  String    @unique
+  scheduledDate DateTime?
+  conductedDate DateTime?
+  good1         String?   @db.Text  // とても良かった項目①
+  good2         String?   @db.Text
+  good3         String?   @db.Text
+  improve1      String?   @db.Text  // 更に取り組みを強化してほしい項目①
+  improve2      String?   @db.Text
+  improve3      String?   @db.Text
+  goal          String?   @db.Text  // 次期の目標
+  conductedBy   String?              // ユーザーID（実施者）
+  notes         String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  evaluation Evaluation @relation(fields: [evaluationId], references: [id], onDelete: Cascade)
+}
+
+// ============================================================
+// Wage / Leave
+// ============================================================
+
+model WageRecord {
+  id                String   @id @default(cuid())
+  employeeId        String
+  yearMonth         String   // "2026-05"
+  basicSalary       Int      @default(0)
+  overtimeAllowance Int      @default(0)
+  otherAllowance    Int      @default(0)
+  deduction         Int      @default(0)
+  netPay            Int      @default(0)
+  notes             String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, yearMonth])
+  @@index([employeeId])
+}
+
+model LeaveBalance {
+  id         String   @id @default(cuid())
+  employeeId String
+  year       Int
+  granted    Float    @default(0)  // 付与日数
+  used       Float    @default(0)  // 使用日数
+  remaining  Float    @default(0)  // 残日数
+  validUntil DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, year])
+  @@index([employeeId])
+}
+
+model LeaveRecord {
+  id         String   @id @default(cuid())
+  employeeId String
+  takenDate  DateTime
+  days       Float    @default(1)
+  reason     String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId, takenDate])
+}
+
+// ============================================================
+// パルスサーベイ（月次の軽量アンケート）
+// ============================================================
+
+enum PulseQuestionType {
+  SCORE_5      // 1〜5の段階評価
+  TEXT         // 自由記述
+  YES_NO       // はい / いいえ
+}
+
+// 設問テンプレート（クライアント単位）
+model PulseQuestion {
+  id           String            @id @default(cuid())
+  clientId     String
+  text         String            @db.Text
+  description  String?           @db.Text   // 補足説明
+  type         PulseQuestionType @default(SCORE_5)
+  sortOrder    Int               @default(0)
+  allowComment Boolean           @default(false) // SCORE_5 にコメント欄を付けるか
+  isActive     Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+
+  client  Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  answers PulseAnswer[]
+
+  @@index([clientId])
+}
+
+enum PulseSurveyStatus {
+  OPEN
+  CLOSED
+}
+
+// 月次サーベイインスタンス
+model PulseSurvey {
+  id         String            @id @default(cuid())
+  clientId   String
+  yearMonth  String            // "2026-05"
+  dueDate    DateTime?
+  status     PulseSurveyStatus @default(OPEN)
+  notes      String?           @db.Text
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  client    Client          @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  responses PulseResponse[]
+
+  @@unique([clientId, yearMonth])
+  @@index([clientId])
+}
+
+// 1人の従業員の月次回答
+model PulseResponse {
+  id           String    @id @default(cuid())
+  surveyId     String
+  employeeId   String
+  submittedAt  DateTime?
+  averageScore Float?    // SCORE_5 系設問の平均（自動計算）
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  survey   PulseSurvey   @relation(fields: [surveyId], references: [id], onDelete: Cascade)
+  employee Employee      @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  answers  PulseAnswer[]
+
+  @@unique([surveyId, employeeId])
+  @@index([employeeId])
+}
+
+// 各設問への回答
+model PulseAnswer {
+  id         String  @id @default(cuid())
+  responseId String
+  questionId String
+  score      Int?    // SCORE_5: 1-5, YES_NO: 1=はい/0=いいえ
+  text       String? @db.Text
+  comment    String? @db.Text  // SCORE_5 設問の補足コメント
+
+  response PulseResponse @relation(fields: [responseId], references: [id], onDelete: Cascade)
+  question PulseQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([responseId, questionId])
+  @@index([responseId])
+}
