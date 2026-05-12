@@ -194,18 +194,48 @@ const DEFAULT_GRADES: Array<{
   },
 ];
 
+/** メール + ロール + テナント + クライアント のスコープで User を upsert */
+async function upsertScopedUser(args: {
+  email: string;
+  role: "SUPER_ADMIN" | "SR_ADMIN" | "CLIENT_ADMIN" | "EMPLOYEE";
+  name: string;
+  passwordHash: string;
+  tenantId?: string;
+  clientId?: string;
+  employeeId?: string;
+}) {
+  const where: Record<string, unknown> = { email: args.email, role: args.role };
+  if (args.tenantId !== undefined) where.tenantId = args.tenantId;
+  if (args.clientId !== undefined) where.clientId = args.clientId;
+  if (args.employeeId !== undefined) where.employeeId = args.employeeId;
+  const existing = await prisma.user.findFirst({ where });
+  if (existing) {
+    return prisma.user.update({
+      where: { id: existing.id },
+      data: { name: args.name, passwordHash: args.passwordHash, isActive: true },
+    });
+  }
+  return prisma.user.create({
+    data: {
+      email: args.email,
+      name: args.name,
+      passwordHash: args.passwordHash,
+      role: args.role,
+      tenantId: args.tenantId ?? null,
+      clientId: args.clientId ?? null,
+      employeeId: args.employeeId ?? null,
+    },
+  });
+}
+
 async function main() {
   const passwordHash = await bcrypt.hash("password123", 10);
 
-  await prisma.user.upsert({
-    where: { email: "admin@example.com" },
-    update: {},
-    create: {
-      email: "admin@example.com",
-      name: "スーパー管理者",
-      passwordHash,
-      role: "SUPER_ADMIN",
-    },
+  await upsertScopedUser({
+    email: "admin@example.com",
+    name: "スーパー管理者",
+    passwordHash,
+    role: "SUPER_ADMIN",
   });
 
   const tenant = await prisma.tenant.upsert({
@@ -214,16 +244,12 @@ async function main() {
     create: { id: "demo-tenant", name: "デモ社労士事務所" },
   });
 
-  await prisma.user.upsert({
-    where: { email: "sr@example.com" },
-    update: {},
-    create: {
-      email: "sr@example.com",
-      name: "社労士太郎",
-      passwordHash,
-      role: "SR_ADMIN",
-      tenantId: tenant.id,
-    },
+  await upsertScopedUser({
+    email: "sr@example.com",
+    name: "社労士太郎",
+    passwordHash,
+    role: "SR_ADMIN",
+    tenantId: tenant.id,
   });
 
   const client = await prisma.client.upsert({
@@ -232,17 +258,13 @@ async function main() {
     create: { id: "demo-client", tenantId: tenant.id, name: "デモ株式会社" },
   });
 
-  await prisma.user.upsert({
-    where: { email: "client@example.com" },
-    update: {},
-    create: {
-      email: "client@example.com",
-      name: "クライアント管理者",
-      passwordHash,
-      role: "CLIENT_ADMIN",
-      tenantId: tenant.id,
-      clientId: client.id,
-    },
+  await upsertScopedUser({
+    email: "client@example.com",
+    name: "クライアント管理者",
+    passwordHash,
+    role: "CLIENT_ADMIN",
+    tenantId: tenant.id,
+    clientId: client.id,
   });
 
   const dept = await prisma.department.upsert({
@@ -339,48 +361,36 @@ async function main() {
     },
   });
 
-  await prisma.user.upsert({
-    where: { email: "employee@example.com" },
-    update: {},
-    create: {
-      email: "employee@example.com",
-      name: "佐藤 従業員",
-      passwordHash,
-      role: "EMPLOYEE",
-      tenantId: tenant.id,
-      clientId: client.id,
-      employeeId: employee.id,
-    },
+  await upsertScopedUser({
+    email: "employee@example.com",
+    name: "佐藤 従業員",
+    passwordHash,
+    role: "EMPLOYEE",
+    tenantId: tenant.id,
+    clientId: client.id,
+    employeeId: employee.id,
   });
 
   // 一次評価者（直属上司）のログインアカウント
-  await prisma.user.upsert({
-    where: { email: "manager@example.com" },
-    update: { employeeId: manager.id },
-    create: {
-      email: "manager@example.com",
-      name: "山田 課長",
-      passwordHash,
-      role: "EMPLOYEE",
-      tenantId: tenant.id,
-      clientId: client.id,
-      employeeId: manager.id,
-    },
+  await upsertScopedUser({
+    email: "manager@example.com",
+    name: "山田 課長",
+    passwordHash,
+    role: "EMPLOYEE",
+    tenantId: tenant.id,
+    clientId: client.id,
+    employeeId: manager.id,
   });
 
   // 最終評価者（所長）のログインアカウント
-  await prisma.user.upsert({
-    where: { email: "director@example.com" },
-    update: { employeeId: director.id },
-    create: {
-      email: "director@example.com",
-      name: "鈴木 所長",
-      passwordHash,
-      role: "EMPLOYEE",
-      tenantId: tenant.id,
-      clientId: client.id,
-      employeeId: director.id,
-    },
+  await upsertScopedUser({
+    email: "director@example.com",
+    name: "鈴木 所長",
+    passwordHash,
+    role: "EMPLOYEE",
+    tenantId: tenant.id,
+    clientId: client.id,
+    employeeId: director.id,
   });
 
   // 評価制度テンプレ：行動指針（汎用版）

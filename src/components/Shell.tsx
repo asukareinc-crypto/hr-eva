@@ -1,11 +1,20 @@
 import Link from "next/link";
-import { signOut } from "@/lib/auth";
+import { signOut, auth } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 import { MobileBottomNav, type MobileNavItem } from "@/components/MobileBottomNav";
 import { DesktopSidebar } from "@/components/DesktopSidebar";
 
+async function getOtherIdentityCount(email: string | null | undefined, currentUserId: string | undefined) {
+  if (!email) return 0;
+  const count = await prisma.user.count({
+    where: { email, isActive: true, NOT: currentUserId ? { id: currentUserId } : undefined },
+  });
+  return count;
+}
+
 export type NavItem = { href: string; label: string; icon?: string };
 
-export function Shell({
+export async function Shell({
   title,
   subtitle,
   nav,
@@ -20,6 +29,9 @@ export function Shell({
   children: React.ReactNode;
   variant?: "desktop" | "mobile";
 }) {
+  const session = await auth();
+  const otherCount = await getOtherIdentityCount(user.email, session?.user?.id);
+
   if (variant === "mobile") {
     return (
       <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
@@ -30,14 +42,21 @@ export function Shell({
             </div>
             <div className="text-sm font-bold">{user.name ?? user.email}</div>
           </div>
-          <form
-            action={async () => {
-              "use server";
-              await signOut({ redirectTo: "/login" });
-            }}
-          >
-            <button className="text-xs text-slate-600">ログアウト</button>
-          </form>
+          <div className="flex items-center gap-3 text-xs text-slate-600">
+            {otherCount > 0 && (
+              <Link href="/switch-account" className="underline-offset-2 hover:underline">
+                切替 ({otherCount + 1})
+              </Link>
+            )}
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: "/login" });
+              }}
+            >
+              <button className="text-xs text-slate-600">ログアウト</button>
+            </form>
+          </div>
         </header>
         <main className="flex-1 p-4 pb-24">{children}</main>
         <MobileBottomNav
@@ -66,6 +85,14 @@ export function Shell({
             </div>
             <div className="flex items-center gap-4 text-sm">
               <span className="text-slate-600">{user.name ?? user.email}</span>
+              {otherCount > 0 && (
+                <Link
+                  href="/switch-account"
+                  className="text-slate-700 hover:text-slate-900 underline-offset-2 hover:underline"
+                >
+                  アカウント切替 ({otherCount + 1})
+                </Link>
+              )}
               <form
                 action={async () => {
                   "use server";

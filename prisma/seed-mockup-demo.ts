@@ -224,17 +224,23 @@ async function main() {
   });
 
   // 社労士ユーザー
-  const srUser = await prisma.user.upsert({
-    where: { email: "demo.sr@hreva-mock.example" },
-    update: { tenantId: tenant.id, role: "SR_ADMIN", passwordHash },
-    create: {
-      email: "demo.sr@hreva-mock.example",
-      name: "山口 社労士",
-      passwordHash,
-      role: "SR_ADMIN",
-      tenantId: tenant.id,
-    },
+  const existingSr = await prisma.user.findFirst({
+    where: { email: "demo.sr@hreva-mock.example", role: "SR_ADMIN", tenantId: tenant.id },
   });
+  const srUser = existingSr
+    ? await prisma.user.update({
+        where: { id: existingSr.id },
+        data: { passwordHash, name: "山口 社労士" },
+      })
+    : await prisma.user.create({
+        data: {
+          email: "demo.sr@hreva-mock.example",
+          name: "山口 社労士",
+          passwordHash,
+          role: "SR_ADMIN",
+          tenantId: tenant.id,
+        },
+      });
 
   // クライアント企業
   const client = await prisma.client.upsert({
@@ -244,18 +250,26 @@ async function main() {
   });
 
   // クライアント管理者
-  await prisma.user.upsert({
-    where: { email: "demo.admin@hreva-mock.example" },
-    update: { tenantId: tenant.id, clientId: client.id, role: "CLIENT_ADMIN", passwordHash },
-    create: {
-      email: "demo.admin@hreva-mock.example",
-      name: "渡辺 管理者",
-      passwordHash,
-      role: "CLIENT_ADMIN",
-      tenantId: tenant.id,
-      clientId: client.id,
-    },
+  const existingClientAdmin = await prisma.user.findFirst({
+    where: { email: "demo.admin@hreva-mock.example", role: "CLIENT_ADMIN", clientId: client.id },
   });
+  if (existingClientAdmin) {
+    await prisma.user.update({
+      where: { id: existingClientAdmin.id },
+      data: { passwordHash, name: "渡辺 管理者" },
+    });
+  } else {
+    await prisma.user.create({
+      data: {
+        email: "demo.admin@hreva-mock.example",
+        name: "渡辺 管理者",
+        passwordHash,
+        role: "CLIENT_ADMIN",
+        tenantId: tenant.id,
+        clientId: client.id,
+      },
+    });
+  }
 
   // 部署
   const deptByName: Record<string, string> = {};
@@ -411,26 +425,27 @@ async function main() {
     empIdByCode.set(e.code, employee.id);
 
     // ログインアカウント
-    await prisma.user.upsert({
-      where: { email: e.loginEmail },
-      update: {
-        name: `${e.lastName} ${e.firstName}`,
-        passwordHash,
-        role: "EMPLOYEE",
-        tenantId: tenant.id,
-        clientId: client.id,
-        employeeId: employee.id,
-      },
-      create: {
-        email: e.loginEmail,
-        name: `${e.lastName} ${e.firstName}`,
-        passwordHash,
-        role: "EMPLOYEE",
-        tenantId: tenant.id,
-        clientId: client.id,
-        employeeId: employee.id,
-      },
+    const existingEmpUser = await prisma.user.findFirst({
+      where: { email: e.loginEmail, role: "EMPLOYEE", employeeId: employee.id },
     });
+    if (existingEmpUser) {
+      await prisma.user.update({
+        where: { id: existingEmpUser.id },
+        data: { name: `${e.lastName} ${e.firstName}`, passwordHash },
+      });
+    } else {
+      await prisma.user.create({
+        data: {
+          email: e.loginEmail,
+          name: `${e.lastName} ${e.firstName}`,
+          passwordHash,
+          role: "EMPLOYEE",
+          tenantId: tenant.id,
+          clientId: client.id,
+          employeeId: employee.id,
+        },
+      });
+    }
   }
 
   // Pass 2: 評価者リンク

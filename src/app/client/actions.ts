@@ -279,9 +279,13 @@ export async function createEmployee(formData: FormData) {
   const userEmail = String(formData.get("userEmail") ?? "").trim().toLowerCase();
   const userPassword = String(formData.get("userPassword") ?? "");
   if (userEmail) {
-    const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
+    // 同一メールで同じスコープ（このクライアント + EMPLOYEE）の重複のみブロック。
+    // 他ロール（社労士・別会社の管理者・他社の従業員）との同居は許可。
+    const existingUser = await prisma.user.findFirst({
+      where: { email: userEmail, clientId, role: "EMPLOYEE" },
+    });
     if (existingUser) {
-      throw new Error(`メールアドレス「${userEmail}」は既にアカウントとして登録されています。別のアドレスを指定するか、ログインアカウント発行欄を空欄にしてください。`);
+      throw new Error(`メールアドレス「${userEmail}」は既にこの会社の従業員アカウントとして登録されています。`);
     }
   }
 

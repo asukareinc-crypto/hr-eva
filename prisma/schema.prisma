@@ -125,7 +125,9 @@ enum UserRole {
 
 model User {
   id            String    @id @default(cuid())
-  email         String    @unique
+  // 同一メールアドレスで複数アカウント（社労士/クライアント/従業員）を持てる。
+  // ロール + テナント + クライアント の組み合わせで一意性を担保。
+  email         String
   passwordHash  String
   name          String
   role          UserRole
@@ -144,6 +146,7 @@ model User {
   sessions Session[]
   accounts Account[]
 
+  @@index([email])
   @@index([tenantId])
   @@index([clientId])
 }

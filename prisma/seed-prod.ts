@@ -32,16 +32,22 @@ async function main() {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.upsert({
-    where: { email: email.toLowerCase() },
-    update: { passwordHash, name, role: "SUPER_ADMIN", isActive: true },
-    create: {
-      email: email.toLowerCase(),
-      name,
-      passwordHash,
-      role: "SUPER_ADMIN",
-    },
+  const existing = await prisma.user.findFirst({
+    where: { email: email.toLowerCase(), role: "SUPER_ADMIN" },
   });
+  const user = existing
+    ? await prisma.user.update({
+        where: { id: existing.id },
+        data: { passwordHash, name, isActive: true },
+      })
+    : await prisma.user.create({
+        data: {
+          email: email.toLowerCase(),
+          name,
+          passwordHash,
+          role: "SUPER_ADMIN",
+        },
+      });
 
   console.log(`✓ Super Admin ${user.email} を作成/更新しました`);
   console.log("  パスワードを必ず初回ログイン後に変更してください。");
