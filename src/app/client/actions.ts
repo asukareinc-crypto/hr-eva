@@ -14,43 +14,73 @@ export async function createEmployee(formData: FormData) {
   const lastName = String(formData.get("lastName") ?? "").trim();
   const firstName = String(formData.get("firstName") ?? "").trim();
   const hireDateStr = String(formData.get("hireDate") ?? "");
-  if (!employeeCode || !lastName || !firstName || !hireDateStr) return;
+  if (!employeeCode || !lastName || !firstName || !hireDateStr) {
+    throw new Error("必須項目（社員番号・姓・名・入社日）が入力されていません。");
+  }
 
-  const employee = await prisma.employee.create({
-    data: {
-      clientId,
-      employeeCode,
-      lastName,
-      firstName,
-      lastNameKana: String(formData.get("lastNameKana") ?? "") || null,
-      firstNameKana: String(formData.get("firstNameKana") ?? "") || null,
-      email: String(formData.get("email") ?? "") || null,
-      phone: String(formData.get("phone") ?? "") || null,
-      hireDate: new Date(hireDateStr),
-      departmentId: String(formData.get("departmentId") ?? "") || null,
-      positionId: String(formData.get("positionId") ?? "") || null,
-      gradeId: String(formData.get("gradeId") ?? "") || null,
-      managerEmployeeId: String(formData.get("managerEmployeeId") ?? "") || null,
-      finalEvaluatorEmployeeId: String(formData.get("finalEvaluatorEmployeeId") ?? "") || null,
-    },
+  // 事前重複チェック（明確なメッセージを返す）
+  const existingEmployee = await prisma.employee.findFirst({
+    where: { clientId, employeeCode },
   });
+  if (existingEmployee) {
+    throw new Error(`社員番号「${employeeCode}」は既に使われています。別の番号を指定してください。`);
+  }
 
-  // 任意で従業員ユーザーアカウントも発行
   const userEmail = String(formData.get("userEmail") ?? "").trim().toLowerCase();
   const userPassword = String(formData.get("userPassword") ?? "");
-  if (userEmail && userPassword) {
-    const passwordHash = await bcrypt.hash(userPassword, 10);
-    await prisma.user.create({
+  if (userEmail) {
+    const existingUser = await prisma.user.findUnique({ where: { email: userEmail } });
+    if (existingUser) {
+      throw new Error(`メールアドレス「${userEmail}」は既にアカウントとして登録されています。別のアドレスを指定するか、ログインアカウント発行欄を空欄にしてください。`);
+    }
+  }
+
+  let employee;
+  try {
+    employee = await prisma.employee.create({
       data: {
-        email: userEmail,
-        name: `${lastName} ${firstName}`,
-        passwordHash,
-        role: "EMPLOYEE",
-        tenantId: session.user.tenantId,
         clientId,
-        employeeId: employee.id,
+        employeeCode,
+        lastName,
+        firstName,
+        lastNameKana: String(formData.get("lastNameKana") ?? "") || null,
+        firstNameKana: String(formData.get("firstNameKana") ?? "") || null,
+        email: String(formData.get("email") ?? "") || null,
+        phone: String(formData.get("phone") ?? "") || null,
+        hireDate: new Date(hireDateStr),
+        departmentId: String(formData.get("departmentId") ?? "") || null,
+        positionId: String(formData.get("positionId") ?? "") || null,
+        gradeId: String(formData.get("gradeId") ?? "") || null,
+        managerEmployeeId: String(formData.get("managerEmployeeId") ?? "") || null,
+        finalEvaluatorEmployeeId: String(formData.get("finalEvaluatorEmployeeId") ?? "") || null,
       },
     });
+  } catch (e) {
+    console.error("[createEmployee] employee.create failed:", e);
+    throw new Error(`従業員データの作成に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // 任意で従業員ユーザーアカウントも発行
+  if (userEmail && userPassword) {
+    try {
+      const passwordHash = await bcrypt.hash(userPassword, 10);
+      await prisma.user.create({
+        data: {
+          email: userEmail,
+          name: `${lastName} ${firstName}`,
+          passwordHash,
+          role: "EMPLOYEE",
+          tenantId: session.user.tenantId,
+          clientId,
+          employeeId: employee.id,
+        },
+      });
+    } catch (e) {
+      console.error("[createEmployee] user.create failed:", e);
+      // ユーザー作成失敗時は従業員レコードも削除してトランザクション的整合を保つ
+      await prisma.employee.delete({ where: { id: employee.id } }).catch(() => {});
+      throw new Error(`ログインアカウントの作成に失敗しました: ${e instanceof Error ? e.message : String(e)}`);
+    }
   }
 
   revalidatePath("/client/employees");
