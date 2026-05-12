@@ -300,6 +300,7 @@ enum EvaluationItemType {
 model EvaluationTemplate {
   id          String   @id @default(cuid())
   tenantId    String
+  clientId    String?  // null = テナント共有テンプレ（社労士作成）／値あり = クライアント専用テンプレ
   name        String
   description String?  @db.Text
   isActive    Boolean  @default(true)
@@ -311,6 +312,7 @@ model EvaluationTemplate {
   periods EvaluationPeriod[]
 
   @@index([tenantId])
+  @@index([clientId])
 }
 
 model EvaluationTemplateItem {

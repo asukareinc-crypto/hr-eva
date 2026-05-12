@@ -9,12 +9,14 @@ export default async function ClientLayout({ children }: { children: React.React
   const nav: NavItem[] = [
     { href: "/client", label: "ダッシュボード", icon: "📊" },
     { href: "/client/employees", label: "従業員", icon: "👥" },
+    { href: "/client/templates", label: "評価制度", icon: "📝" },
     { href: "/client/periods", label: "評価期間", icon: "📅" },
     { href: "/client/pulse", label: "パルス", icon: "📋" },
   ];
   if (features.wageEnabled) nav.push({ href: "/client/wage", label: "賃金", icon: "💴" });
   if (features.leaveEnabled) nav.push({ href: "/client/leave", label: "有給", icon: "🏖️" });
   nav.push({ href: "/client/settings/api-keys", label: "通知連携", icon: "🔔" });
+  nav.push({ href: "/client/settings/features", label: "機能設定", icon: "⚙️" });
 
   return (
     <Shell

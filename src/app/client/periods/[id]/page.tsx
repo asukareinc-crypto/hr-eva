@@ -7,6 +7,7 @@ import { Badge, Btn, Field, Select } from "@/components/ui";
 import {
   assignEmployeeToPeriod,
   removeEvaluationFromPeriod,
+  updateClientPeriodStatus,
 } from "@/app/client/actions";
 
 const STATUS_LABEL: Record<string, string> = {
@@ -66,6 +67,32 @@ export default async function ClientPeriodDetailPage({
         description={`${period.template.name} ・ ${period.startDate.toISOString().slice(0, 10)}〜${period.endDate.toISOString().slice(0, 10)}`}
         actions={<Link href="/client/periods" className="text-sm text-slate-600 underline-offset-2 hover:underline">← 一覧へ</Link>}
       />
+
+      <Card className="p-3 flex items-center justify-between">
+        <div className="flex items-center gap-3 text-sm">
+          <span className="text-slate-500">状態</span>
+          <Badge tone={period.status === "OPEN" ? "green" : period.status === "DRAFT" ? "slate" : "yellow"}>
+            {period.status === "OPEN" ? "運用中" : period.status === "DRAFT" ? "下書き" : "終了"}
+          </Badge>
+        </div>
+        <div className="flex gap-2">
+          {period.status === "DRAFT" && (
+            <form action={async () => { "use server"; await updateClientPeriodStatus(id, "OPEN"); }}>
+              <Btn type="submit">運用開始</Btn>
+            </form>
+          )}
+          {period.status === "OPEN" && (
+            <form action={async () => { "use server"; await updateClientPeriodStatus(id, "CLOSED"); }}>
+              <Btn type="submit" variant="secondary">期間を終了</Btn>
+            </form>
+          )}
+          {period.status === "CLOSED" && (
+            <form action={async () => { "use server"; await updateClientPeriodStatus(id, "OPEN"); }}>
+              <Btn type="submit" variant="secondary">再オープン</Btn>
+            </form>
+          )}
+        </div>
+      </Card>
 
       <Card className="p-4">
         <h2 className="font-semibold mb-2">対象者を追加</h2>

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { requireClientAdmin } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { Card, PageHeader } from "@/components/Shell";
-import { Badge, Empty } from "@/components/ui";
+import { Badge, Empty, LinkBtn } from "@/components/ui";
 
 const STATUS_TONE: Record<string, "slate" | "blue" | "green" | "yellow"> = {
   DRAFT: "slate",
@@ -30,7 +30,8 @@ export default async function ClientPeriodsPage() {
     <div className="space-y-4">
       <PageHeader
         title="評価期間"
-        description="社労士が設定した評価期間に対象者を割り当て、進捗を確認します"
+        description="自社の評価期間を作成・運用します"
+        actions={<LinkBtn href="/client/periods/new">+ 新規作成</LinkBtn>}
       />
 
       {periods.length === 0 ? (
