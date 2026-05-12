@@ -17,7 +17,7 @@ const prisma = new PrismaClient({ adapter });
 
 const PASSWORD = "Demo2026!";
 
-// 評価項目（Nice-one ベース、本番 seed と同じ）
+// 評価項目（汎用版・業種非依存）
 const TEMPLATE_ITEMS = [
   {
     id: "mock-item-rule",
@@ -57,18 +57,18 @@ const TEMPLATE_ITEMS = [
   },
   {
     id: "mock-item-customer",
-    name: "顧客対応・折衝",
-    description: "お客様への定期訪問・折衝・満足度向上に積極的に取り組んだか",
-    interviewPoint: "・印象に残った顧客対応エピソードを共有\n・定期訪問の運用プロセスを言語化\n・次期の深堀テーマを擦り合わせる",
-    interviewQuestions: "・印象に残ったお客様対応はありますか？\n・お客様から学んだことは？\n・次の半期で深めたいテーマは？",
+    name: "対応力（顧客・社内）",
+    description: "お客様や社内関係者からの依頼・問合せに迅速かつ的確に対応できたか",
+    interviewPoint: "・印象に残った対応エピソードを共有\n・対応プロセスで工夫している点を言語化\n・次期の改善テーマを擦り合わせる",
+    interviewQuestions: "・印象に残った対応はありますか？\n・対応から学んだことは？\n・次の半期で改善したい点は？",
     weight: 3,
     sortOrder: 3,
     levels: [
-      { score: 5, description: "顧客満足度を強く意識し、自ら提案・改善を行うとともに信頼関係を深く築いた" },
-      { score: 4, description: "丁寧な対応により顧客から評価を得る場面が多く、信頼関係を築けていた" },
-      { score: 3, description: "求められる顧客対応を行い、特段の問題は発生しなかった" },
-      { score: 2, description: "対応が受身的で、顧客から指摘を受ける場面があった" },
-      { score: 1, description: "対応に問題があり、顧客から強い指摘・クレームを受けた" },
+      { score: 5, description: "相手のニーズを的確に汲み取り、期待を上回る対応を継続し、深い信頼関係を築いた" },
+      { score: 4, description: "丁寧で迅速な対応により評価を得る場面が多く、信頼関係を築けていた" },
+      { score: 3, description: "求められる対応を行い、特段の問題は発生しなかった" },
+      { score: 2, description: "対応が受身的で、指摘を受ける場面があった" },
+      { score: 1, description: "対応に問題があり、強い指摘やクレームを受けた" },
     ],
   },
   {
@@ -302,13 +302,13 @@ async function main() {
     update: {
       tenantId: tenant.id,
       name: "行動指針（半期評価）",
-      description: "Nice-one 評価モデルをベースとした半期ごとの行動・成果評価。絶対評価で実施。",
+      description: "半期ごとの行動・成果を絶対評価で測定する標準テンプレート。各項目は5段階評価＋面談用の質問例つき。",
     },
     create: {
       id: "mock-template",
       tenantId: tenant.id,
       name: "行動指針（半期評価）",
-      description: "Nice-one 評価モデルをベースとした半期ごとの行動・成果評価。絶対評価で実施。",
+      description: "半期ごとの行動・成果を絶対評価で測定する標準テンプレート。各項目は5段階評価＋面談用の質問例つき。",
     },
   });
 

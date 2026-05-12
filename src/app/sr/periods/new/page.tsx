@@ -22,7 +22,7 @@ export default async function NewPeriodPage() {
     <div className="space-y-4">
       <PageHeader
         title="評価期間 新規作成"
-        description="Nice-one 評価モデルでは年2回（上期/下期）実施します。各種期限を設定すると関係者へのリマインドに使用されます。"
+        description="年2回（上期/下期）で運用するのが一般的です。各種期限を設定すると関係者へのリマインドに使用されます。"
       />
       <Card className="p-6 max-w-2xl">
         <form action={createPeriod} className="space-y-4">

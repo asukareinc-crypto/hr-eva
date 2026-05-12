@@ -6,7 +6,7 @@ import { PrismaPg } from "@prisma/adapter-pg";
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
-// Nice‐one 評価システムをベースにした行動指針評価項目（5段階絶対評価）
+// 汎用版・業種非依存の行動指針評価項目（5段階絶対評価）
 // 会社ごとに編集可能なデフォルトコンテンツ
 const DEFAULT_TEMPLATE_ITEMS: Array<{
   id: string;
@@ -56,20 +56,20 @@ const DEFAULT_TEMPLATE_ITEMS: Array<{
   },
   {
     id: "demo-item-customer",
-    name: "顧客対応・折衝",
-    description: "お客様への定期訪問・折衝・満足度向上に積極的に取り組んだか",
+    name: "対応力（顧客・社内）",
+    description: "お客様や社内関係者からの依頼・問合せに迅速かつ的確に対応できたか",
     interviewPoint:
-      "・お客様から特に喜ばれた／逆に指摘を受けたエピソードを共有する\n・定期訪問の準備・フォローでうまく回せているプロセスを言語化する\n・次の半期で深めたい顧客や提案テーマを擦り合わせる",
+      "・特に喜ばれた／指摘を受けたエピソードを共有する\n・対応プロセスでうまく回せている工夫を言語化する\n・次の半期で改善・強化したいテーマを擦り合わせる",
     interviewQuestions:
-      "・この半期で印象に残ったお客様対応はありますか？\n・お客様から学んだこと、改善のヒントを得たことは？\n・次の半期で「ここを伸ばしたい」というテーマがあれば教えてください。",
+      "・この半期で印象に残った対応はありますか？\n・相手から学んだこと、改善のヒントを得たことは？\n・次の半期で「ここを伸ばしたい」というテーマがあれば教えてください。",
     weight: 3,
     sortOrder: 3,
     levels: [
-      { score: 5, description: "顧客満足度を強く意識し、自ら提案・改善を行うとともに信頼関係を深く築いた" },
-      { score: 4, description: "丁寧な対応により顧客から評価を得る場面が多く、信頼関係を築けていた" },
-      { score: 3, description: "求められる顧客対応を行い、特段の問題は発生しなかった" },
-      { score: 2, description: "対応が受身的で、顧客から指摘を受ける場面があった" },
-      { score: 1, description: "対応に問題があり、顧客から強い指摘・クレームを受けた" },
+      { score: 5, description: "相手のニーズを的確に汲み取り、期待を上回る対応を継続し、深い信頼関係を築いた" },
+      { score: 4, description: "丁寧で迅速な対応により評価を得る場面が多く、信頼関係を築けていた" },
+      { score: 3, description: "求められる対応を行い、特段の問題は発生しなかった" },
+      { score: 2, description: "対応が受身的で、指摘を受ける場面があった" },
+      { score: 1, description: "対応に問題があり、強い指摘やクレームを受けた" },
     ],
   },
   {
@@ -128,7 +128,7 @@ const DEFAULT_TEMPLATE_ITEMS: Array<{
   },
 ];
 
-// デフォルト等級基準表（1〜6等級、Nice-oneモデルに準拠）
+// デフォルト等級基準表（1〜6等級、汎用版）
 const DEFAULT_GRADES: Array<{
   rank: number;
   name: string;
@@ -151,7 +151,7 @@ const DEFAULT_GRADES: Array<{
     rank: 2,
     name: "2等級",
     role: "一般スタッフ",
-    description: "標準的な業務を独力で遂行できる。担当顧客を持ち、定期訪問や折衝を行える。",
+    description: "標準的な業務を独力で遂行できる。担当領域や担当顧客の対応を行える。",
     salaryMin: 230000,
     salaryMax: 280000,
     isManager: false,
@@ -383,18 +383,18 @@ async function main() {
     },
   });
 
-  // 評価制度テンプレ：行動指針（Nice-oneモデルがベース）
+  // 評価制度テンプレ：行動指針（汎用版）
   const template = await prisma.evaluationTemplate.upsert({
     where: { id: "demo-template" },
     update: {
       name: "行動指針（半期評価）",
-      description: "Nice-one 評価システムをベースにした半期ごとの行動・成果評価。絶対評価で実施します。",
+      description: "半期ごとの行動・成果を絶対評価で測定する標準テンプレート。各項目は5段階評価＋面談用の質問例つき。",
     },
     create: {
       id: "demo-template",
       tenantId: tenant.id,
       name: "行動指針（半期評価）",
-      description: "Nice-one 評価システムをベースにした半期ごとの行動・成果評価。絶対評価で実施します。",
+      description: "半期ごとの行動・成果を絶対評価で測定する標準テンプレート。各項目は5段階評価＋面談用の質問例つき。",
     },
   });
 
