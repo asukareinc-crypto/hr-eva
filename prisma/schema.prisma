@@ -59,12 +59,15 @@ model TenantApiKey {
 }
 
 model Client {
-  id        String   @id @default(cuid())
-  tenantId  String
-  name      String
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String   @id @default(cuid())
+  tenantId      String
+  name          String
+  isActive      Boolean  @default(true)
+  // 機能トグル（クライアント企業ごとにON/OFF可能）
+  wageEnabled   Boolean  @default(true)
+  leaveEnabled  Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   users             User[]

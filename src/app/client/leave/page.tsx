@@ -1,5 +1,7 @@
+import { notFound } from "next/navigation";
 import { requireClientAdmin } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+import { getClientFeatures } from "@/lib/client-features";
 import { Card, PageHeader } from "@/components/Shell";
 import { Btn, Empty, Field, Input, Select } from "@/components/ui";
 import { upsertLeaveBalance } from "@/app/client/actions";
@@ -9,6 +11,8 @@ import { CsvPanel } from "@/components/CsvPanel";
 export default async function LeavePage() {
   const session = await requireClientAdmin();
   const clientId = session.user.clientId!;
+  const features = await getClientFeatures(clientId);
+  if (!features.leaveEnabled) notFound();
 
   const [employees, balances] = await Promise.all([
     prisma.employee.findMany({

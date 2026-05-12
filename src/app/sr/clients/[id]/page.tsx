@@ -4,7 +4,7 @@ import { requireSr } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { Card, PageHeader } from "@/components/Shell";
 import { Badge, Btn, Field, Input } from "@/components/ui";
-import { updateClient } from "@/app/sr/actions";
+import { updateClient, updateClientFeatures } from "@/app/sr/actions";
 
 export default async function ClientDetailPage({
   params,
@@ -74,6 +74,32 @@ export default async function ClientDetailPage({
           </Card>
         </Link>
       </div>
+
+      <Card className="p-6 max-w-xl">
+        <h2 className="font-semibold mb-3 text-sm">提供機能の切替</h2>
+        <p className="text-xs text-slate-500 mb-3">
+          このクライアント企業に対して、賃金・有給機能を表示するかを切り替えます。OFF にすると、クライアント管理者画面・従業員モバイル画面のメニューと画面が非表示になります。
+        </p>
+        <form
+          action={async (fd) => {
+            "use server";
+            await updateClientFeatures(id, fd);
+          }}
+          className="space-y-2"
+        >
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="wageEnabled" defaultChecked={client.wageEnabled} />
+            💴 賃金表示機能
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="leaveEnabled" defaultChecked={client.leaveEnabled} />
+            🏖️ 有給表示機能
+          </label>
+          <div className="pt-2">
+            <Btn type="submit">機能設定を保存</Btn>
+          </div>
+        </form>
+      </Card>
 
       <Card className="p-4">
         <h2 className="font-semibold mb-2 text-sm">クライアント管理者</h2>

@@ -57,6 +57,20 @@ export async function updateClient(id: string, formData: FormData) {
   revalidatePath(`/sr/clients/${id}`);
 }
 
+/** 機能トグル更新（賃金・有給） */
+export async function updateClientFeatures(id: string, formData: FormData) {
+  const session = await requireSr();
+  const wageEnabled = formData.get("wageEnabled") === "on";
+  const leaveEnabled = formData.get("leaveEnabled") === "on";
+  await prisma.client.update({
+    where: { id, tenantId: session.user.tenantId! },
+    data: { wageEnabled, leaveEnabled },
+  });
+  revalidatePath(`/sr/clients/${id}`);
+  revalidatePath("/client");
+  revalidatePath("/m");
+}
+
 // ----- Grades -----
 export async function createGrade(formData: FormData) {
   const session = await requireSr();

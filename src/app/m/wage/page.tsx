@@ -1,11 +1,15 @@
+import { notFound } from "next/navigation";
 import { requireEmployee } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
+import { getClientFeatures } from "@/lib/client-features";
 import { Card } from "@/components/Shell";
 import { Empty } from "@/components/ui";
 
 export default async function MobileWagePage() {
   const session = await requireEmployee();
   const employeeId = session.user.employeeId!;
+  const features = await getClientFeatures(session.user.clientId);
+  if (!features.wageEnabled) notFound();
   const records = await prisma.wageRecord.findMany({
     where: { employeeId },
     orderBy: { yearMonth: "desc" },

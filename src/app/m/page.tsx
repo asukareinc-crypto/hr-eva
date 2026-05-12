@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { Card } from "@/components/Shell";
 import { Badge } from "@/components/ui";
 import { LineChart } from "@/components/charts";
+import { getClientFeatures } from "@/lib/client-features";
 
 const STATUS_LABEL: Record<string, string> = {
   NOT_STARTED: "未着手",
@@ -21,6 +22,7 @@ export default async function MobileHome() {
   const employeeId = session.user.employeeId!;
   const clientId = session.user.clientId!;
 
+  const features = await getClientFeatures(clientId);
   const [
     employee,
     myAssignments,
@@ -194,7 +196,9 @@ export default async function MobileHome() {
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
+      {(features.wageEnabled || features.leaveEnabled) && (
+      <div className={`grid gap-2 ${features.wageEnabled && features.leaveEnabled ? "grid-cols-2" : "grid-cols-1"}`}>
+        {features.wageEnabled && (
         <Card className="p-3">
           <div className="text-xs text-slate-500">💴 最新賃金</div>
           {latestWage ? (
@@ -209,6 +213,8 @@ export default async function MobileHome() {
             詳細
           </Link>
         </Card>
+        )}
+        {features.leaveEnabled && (
         <Card className="p-3">
           <div className="text-xs text-slate-500">🏖️ 有給残</div>
           {leaveBalance ? (
@@ -223,7 +229,9 @@ export default async function MobileHome() {
             詳細
           </Link>
         </Card>
+        )}
       </div>
+      )}
     </div>
   );
 }
