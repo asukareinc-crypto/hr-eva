@@ -1,6 +1,6 @@
 // Minimal service worker for installability + offline shell
-const CACHE = "hr-eva-v2";
-const SHELL = ["/m", "/manifest.json", "/icons/icon-192.svg", "/icons/icon-512.svg"];
+const CACHE = "hr-eva-v3";
+const SHELL = ["/m", "/manifest.json", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (event) => {
   event.waitUntil(caches.open(CACHE).then((c) => c.addAll(SHELL)).catch(() => {}));
