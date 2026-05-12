@@ -7,7 +7,6 @@ import { encryptSecret } from "@/lib/crypto";
 import type { TenantApiService } from "@/generated/prisma/enums";
 
 const VALID_SERVICES: TenantApiService[] = [
-  "RESEND",
   "OPENAI",
   "ANTHROPIC",
   "YAYOI_PAYROLL",

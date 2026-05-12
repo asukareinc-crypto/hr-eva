@@ -9,7 +9,6 @@ import {
 } from "@/app/sr/settings/actions";
 
 const SERVICE_LABELS: Record<string, { name: string; hint: string }> = {
-  RESEND: { name: "Resend (メール)", hint: "送信用 API キー（re_xxxxx...）" },
   OPENAI: { name: "OpenAI", hint: "sk-... で始まるシークレットキー" },
   ANTHROPIC: { name: "Anthropic Claude", hint: "sk-ant-... で始まるシークレットキー" },
   YAYOI_PAYROLL: { name: "弥生給与", hint: "API キー（弥生クラウド）" },
@@ -19,7 +18,6 @@ const SERVICE_LABELS: Record<string, { name: string; hint: string }> = {
 };
 
 const META_HINTS: Record<string, string> = {
-  RESEND: "from=HR EVA <noreply@your-domain.com>",
   CUSTOM: "key1=value1\nkey2=value2",
 };
 
@@ -36,7 +34,7 @@ export default async function ApiKeysPage() {
     <div className="space-y-4">
       <PageHeader
         title="外部サービス API キー（事務所単位）"
-        description="社労士事務所が複数クライアント横断で使うサービス（AI / 給与ソフト連携 等）。Slack/LINE/ChatWorkは会社毎の設定のため、各クライアント企業の管理者画面で設定します。"
+        description="社労士事務所が複数クライアント横断で使うサービス（AI / 給与ソフト連携 等）。Slack/LINE/ChatWorkは会社毎の設定のため各クライアント企業の管理者画面で設定します。メール送信(Resend)はシステム全体で共通利用するため設定は不要です。"
       />
 
       <Card className="p-4 bg-amber-50 border-amber-200">

@@ -10,7 +10,6 @@ const VALID_SERVICES: ClientApiService[] = [
   "SLACK_WEBHOOK",
   "LINE_NOTIFY",
   "CHATWORK",
-  "RESEND",
   "CUSTOM",
 ];
 

@@ -21,17 +21,12 @@ const SERVICE_LABELS: Record<string, { name: string; hint: string }> = {
     name: "ChatWork",
     hint: "ChatWork API トークン（メタデータに roomId=... を必ず指定）",
   },
-  RESEND: {
-    name: "Resend (会社独自メール)",
-    hint: "自社ドメインからメール送信したい場合のみ設定",
-  },
   CUSTOM: { name: "その他カスタム", hint: "任意のシークレット文字列" },
 };
 
 const META_HINTS: Record<string, string> = {
   SLACK_WEBHOOK: "channel=#hr-eva-notify\nusername=HR EVA",
   CHATWORK: "roomId=12345678",
-  RESEND: "from=人事部 <hr@your-company.com>",
   CUSTOM: "key1=value1\nkey2=value2",
 };
 
