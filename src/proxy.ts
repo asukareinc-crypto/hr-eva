@@ -20,6 +20,8 @@ export default auth((req) => {
     pathname.startsWith("/login") ||
     pathname.startsWith("/api/auth") ||
     pathname.startsWith("/api/health") ||
+    pathname.startsWith("/api/sentry-test") ||
+    pathname.startsWith("/monitoring") ||
     pathname.startsWith("/api/account/") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
