@@ -6,6 +6,16 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
 import { periodOpenedEmail, periodReminderEmail, sendMail } from "@/lib/email";
+import {
+  vDate,
+  vDateOrder,
+  vDateRange,
+  vInt,
+  vOptionalDate,
+  vOptionalInt,
+  vRequired,
+  ValidationError,
+} from "@/lib/validation";
 
 // ----- Clients -----
 export async function createClient(formData: FormData) {
@@ -74,15 +84,19 @@ export async function updateClientFeatures(id: string, formData: FormData) {
 // ----- Grades -----
 export async function createGrade(formData: FormData) {
   const session = await requireSr();
-  const clientId = String(formData.get("clientId") ?? "");
-  const rank = Number(formData.get("rank") ?? 0);
-  const name = String(formData.get("name") ?? "").trim();
-  if (!clientId || !rank || !name) return;
+  const clientId = vRequired(formData.get("clientId") as string | null, "クライアント企業");
+  const rank = vInt(formData.get("rank") as string | null, "等級番号", { min: 1, max: 99 });
+  const name = vRequired(formData.get("name") as string | null, "等級名");
+  const salaryMin = vOptionalInt(formData.get("salaryMin") as string | null, "基本給 下限", { min: 0 });
+  const salaryMax = vOptionalInt(formData.get("salaryMax") as string | null, "基本給 上限", { min: 0 });
+  if (salaryMin != null && salaryMax != null && salaryMin > salaryMax) {
+    throw new ValidationError("基本給の下限は上限以下にしてください。");
+  }
 
   const client = await prisma.client.findFirst({
     where: { id: clientId, tenantId: session.user.tenantId! },
   });
-  if (!client) return;
+  if (!client) throw new ValidationError("クライアント企業が見つかりません。");
 
   await prisma.grade.upsert({
     where: { clientId_rank: { clientId, rank } },
@@ -90,8 +104,8 @@ export async function createGrade(formData: FormData) {
       name,
       role: String(formData.get("role") ?? "") || null,
       description: String(formData.get("description") ?? "") || null,
-      salaryMin: Number(formData.get("salaryMin") || 0) || null,
-      salaryMax: Number(formData.get("salaryMax") || 0) || null,
+      salaryMin,
+      salaryMax,
       isManager: formData.get("isManager") === "on",
     },
     create: {
@@ -100,8 +114,8 @@ export async function createGrade(formData: FormData) {
       name,
       role: String(formData.get("role") ?? "") || null,
       description: String(formData.get("description") ?? "") || null,
-      salaryMin: Number(formData.get("salaryMin") || 0) || null,
-      salaryMax: Number(formData.get("salaryMax") || 0) || null,
+      salaryMin,
+      salaryMax,
       isManager: formData.get("isManager") === "on",
     },
   });
@@ -252,13 +266,29 @@ function dateOrNull(value: FormDataEntryValue | null) {
 
 export async function createPeriod(formData: FormData) {
   const session = await requireSr();
-  const clientId = String(formData.get("clientId") ?? "");
-  const templateId = String(formData.get("templateId") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
+  const clientId = vRequired(formData.get("clientId") as string | null, "クライアント企業");
+  const templateId = vRequired(formData.get("templateId") as string | null, "評価制度");
+  const name = vRequired(formData.get("name") as string | null, "期間名");
   const half = String(formData.get("half") ?? "") as "UPPER" | "LOWER" | "";
-  const startDate = new Date(String(formData.get("startDate")));
-  const endDate = new Date(String(formData.get("endDate")));
-  if (!clientId || !templateId || !name) return;
+  const startDate = vDate(formData.get("startDate") as string | null, "評価対象期間 開始");
+  const endDate = vDate(formData.get("endDate") as string | null, "評価対象期間 終了");
+  vDateRange(startDate, endDate, "評価対象期間 開始", "評価対象期間 終了");
+
+  const selfEvalDueDate = vOptionalDate(formData.get("selfEvalDueDate") as string | null, "自己評価 提出期限");
+  const primaryEvalDueDate = vOptionalDate(formData.get("primaryEvalDueDate") as string | null, "一次評価者 提出期限");
+  const finalEvalDueDate = vOptionalDate(formData.get("finalEvalDueDate") as string | null, "最終評価者 提出期限");
+  // 期限の順序チェック（任意項目なので存在する場合のみ）
+  if (selfEvalDueDate && primaryEvalDueDate) {
+    vDateOrder(selfEvalDueDate, primaryEvalDueDate, "自己評価 提出期限", "一次評価者 提出期限");
+  }
+  if (primaryEvalDueDate && finalEvalDueDate) {
+    vDateOrder(primaryEvalDueDate, finalEvalDueDate, "一次評価者 提出期限", "最終評価者 提出期限");
+  }
+  const feedbackPeriodMonth = vOptionalInt(
+    formData.get("feedbackPeriodMonth") as string | null,
+    "フィードバック面談 実施月",
+    { min: 1, max: 12 }
+  );
 
   const client = await prisma.client.findFirst({
     where: { id: clientId, tenantId: session.user.tenantId! },
@@ -266,7 +296,8 @@ export async function createPeriod(formData: FormData) {
   const template = await prisma.evaluationTemplate.findFirst({
     where: { id: templateId, tenantId: session.user.tenantId! },
   });
-  if (!client || !template) return;
+  if (!client) throw new ValidationError("クライアント企業が見つかりません。");
+  if (!template) throw new ValidationError("評価制度テンプレートが見つかりません。");
 
   const p = await prisma.evaluationPeriod.create({
     data: {
@@ -276,10 +307,10 @@ export async function createPeriod(formData: FormData) {
       half: half === "UPPER" || half === "LOWER" ? half : null,
       startDate,
       endDate,
-      selfEvalDueDate: dateOrNull(formData.get("selfEvalDueDate")),
-      primaryEvalDueDate: dateOrNull(formData.get("primaryEvalDueDate")),
-      finalEvalDueDate: dateOrNull(formData.get("finalEvalDueDate")),
-      feedbackPeriodMonth: Number(formData.get("feedbackPeriodMonth") || 0) || null,
+      selfEvalDueDate,
+      primaryEvalDueDate,
+      finalEvalDueDate,
+      feedbackPeriodMonth,
     },
   });
   revalidatePath("/sr/periods");

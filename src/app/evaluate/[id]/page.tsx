@@ -4,7 +4,7 @@ import { requireSession } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { Card, PageHeader } from "@/components/Shell";
 import { Badge, Btn, Field, Select, Textarea } from "@/components/ui";
-import { saveScoresDraft, submitAssignment } from "@/app/evaluate/actions";
+import { saveScoresDraft, submitAssignment, unsubmitAssignment } from "@/app/evaluate/actions";
 
 const ROLE_LABEL: Record<string, string> = {
   SELF: "自己評価",
@@ -97,13 +97,36 @@ export default async function EvaluatePage({
           }
         />
 
-        <div className="flex items-center gap-2 text-sm">
-          <Badge tone={isSubmitted ? "green" : "blue"}>
-            {isSubmitted ? "提出済み" : "下書き"}
-          </Badge>
-          {waitMessage && (
-            <span className="text-yellow-700 text-xs">{waitMessage}</span>
-          )}
+        <div className="flex items-center justify-between gap-2 text-sm flex-wrap">
+          <div className="flex items-center gap-2">
+            <Badge tone={isSubmitted ? "green" : "blue"}>
+              {isSubmitted ? "提出済み" : "下書き"}
+            </Badge>
+            {waitMessage && (
+              <span className="text-yellow-700 text-xs">{waitMessage}</span>
+            )}
+          </div>
+          {isSubmitted && (() => {
+            // 次段階が未着手なら取り消し可能
+            const status = assignment.evaluation.status;
+            const canUnsubmit =
+              (assignment.role === "SELF" && status === "SELF_DONE") ||
+              (assignment.role === "MANAGER" && status === "MANAGER_DONE") ||
+              (assignment.role === "FINAL" && status === "FINAL_DONE");
+            if (!canUnsubmit) return null;
+            return (
+              <form
+                action={async () => {
+                  "use server";
+                  await unsubmitAssignment(assignmentId);
+                }}
+              >
+                <Btn type="submit" variant="secondary">
+                  ↩ 提出を取り消して下書きに戻す
+                </Btn>
+              </form>
+            );
+          })()}
         </div>
 
         {assignment.role !== "SELF" && (

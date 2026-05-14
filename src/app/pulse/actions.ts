@@ -68,18 +68,29 @@ export async function deletePulseQuestion(id: string) {
 export async function ensureMonthlySurvey(formData: FormData) {
   const session = await requireClientAdmin();
   const yearMonth = String(formData.get("yearMonth") ?? "").trim();
-  if (!/^\d{4}-\d{2}$/.test(yearMonth)) return;
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(yearMonth)) {
+    throw new Error(`対象月は YYYY-MM 形式で入力してください: ${yearMonth || "未入力"}`);
+  }
   const dueDateStr = String(formData.get("dueDate") ?? "");
+  const dueDate = dueDateStr ? new Date(dueDateStr) : null;
+  if (dueDate && Number.isNaN(dueDate.getTime())) {
+    throw new Error("締切日の日付形式が正しくありません。");
+  }
+  // 締切日は対象月の月初以降であることを軽くチェック
+  if (dueDate) {
+    const [y, m] = yearMonth.split("-").map(Number);
+    const monthStart = new Date(y, m - 1, 1);
+    if (dueDate < monthStart) {
+      throw new Error("締切日は対象月の月初以降にしてください。");
+    }
+  }
   await prisma.pulseSurvey.upsert({
     where: { clientId_yearMonth: { clientId: session.user.clientId!, yearMonth } },
-    update: {
-      dueDate: dueDateStr ? new Date(dueDateStr) : null,
-      status: "OPEN",
-    },
+    update: { dueDate, status: "OPEN" },
     create: {
       clientId: session.user.clientId!,
       yearMonth,
-      dueDate: dueDateStr ? new Date(dueDateStr) : null,
+      dueDate,
       status: "OPEN",
     },
   });

@@ -69,6 +69,48 @@ export async function saveScoresDraft(assignmentId: string, formData: FormData) 
   revalidatePath(`/evaluate/${assignmentId}`);
 }
 
+/**
+ * 提出を取り消して下書きに戻す。
+ * 次の段階がまだ動いていない場合のみ可能：
+ *  - SELF: 評価がまだ SELF_DONE のとき（一次評価者が触る前）
+ *  - MANAGER: 評価がまだ MANAGER_DONE のとき（最終評価者が触る前）
+ *  - FINAL: 評価がまだ FINAL_DONE のとき（確定前）
+ */
+export async function unsubmitAssignment(assignmentId: string) {
+  const a = await loadAssignment(assignmentId);
+  if (!a) return;
+  if (!a.submittedAt) return;
+
+  const status = a.evaluation.status;
+  let allowed = false;
+  let nextStatus = status;
+  if (a.role === "SELF" && status === "SELF_DONE") {
+    allowed = true;
+    nextStatus = "SELF_IN_PROGRESS";
+  } else if (a.role === "MANAGER" && status === "MANAGER_DONE") {
+    allowed = true;
+    nextStatus = "MANAGER_IN_PROGRESS";
+  } else if (a.role === "FINAL" && status === "FINAL_DONE") {
+    allowed = true;
+    nextStatus = "FINAL_IN_PROGRESS";
+  }
+  if (!allowed) {
+    throw new Error(
+      "既に次の段階の評価者が作業を始めているため、提出を取り消せません。次の評価者に連絡してから取り消してください。"
+    );
+  }
+
+  await prisma.evaluationAssignment.update({
+    where: { id: assignmentId },
+    data: { submittedAt: null },
+  });
+  await prisma.evaluation.update({
+    where: { id: a.evaluationId },
+    data: { status: nextStatus },
+  });
+  revalidatePath(`/evaluate/${assignmentId}`);
+}
+
 export async function submitAssignment(assignmentId: string, formData: FormData) {
   const a = await loadAssignment(assignmentId);
   if (!a) return;

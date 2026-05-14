@@ -5,6 +5,18 @@ import { requireClientAdmin } from "@/lib/guards";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import bcrypt from "bcryptjs";
+import {
+  vDate,
+  vDateOrder,
+  vDateRange,
+  vFloat,
+  vInt,
+  vOptionalDate,
+  vOptionalInt,
+  vRequired,
+  vYearMonth,
+  ValidationError,
+} from "@/lib/validation";
 
 // ============================================================
 // 機能トグル（クライアント自己管理）
@@ -210,12 +222,27 @@ function dateOrNull(value: FormDataEntryValue | null) {
 
 export async function createClientPeriod(formData: FormData) {
   const session = await requireClientAdmin();
-  const templateId = String(formData.get("templateId") ?? "");
-  const name = String(formData.get("name") ?? "").trim();
+  const templateId = vRequired(formData.get("templateId") as string | null, "評価制度");
+  const name = vRequired(formData.get("name") as string | null, "期間名");
   const half = String(formData.get("half") ?? "") as "UPPER" | "LOWER" | "";
-  const startDate = new Date(String(formData.get("startDate")));
-  const endDate = new Date(String(formData.get("endDate")));
-  if (!templateId || !name) return;
+  const startDate = vDate(formData.get("startDate") as string | null, "評価対象期間 開始");
+  const endDate = vDate(formData.get("endDate") as string | null, "評価対象期間 終了");
+  vDateRange(startDate, endDate, "評価対象期間 開始", "評価対象期間 終了");
+
+  const selfEvalDueDate = vOptionalDate(formData.get("selfEvalDueDate") as string | null, "自己評価 提出期限");
+  const primaryEvalDueDate = vOptionalDate(formData.get("primaryEvalDueDate") as string | null, "一次評価者 提出期限");
+  const finalEvalDueDate = vOptionalDate(formData.get("finalEvalDueDate") as string | null, "最終評価者 提出期限");
+  if (selfEvalDueDate && primaryEvalDueDate) {
+    vDateOrder(selfEvalDueDate, primaryEvalDueDate, "自己評価 提出期限", "一次評価者 提出期限");
+  }
+  if (primaryEvalDueDate && finalEvalDueDate) {
+    vDateOrder(primaryEvalDueDate, finalEvalDueDate, "一次評価者 提出期限", "最終評価者 提出期限");
+  }
+  const feedbackPeriodMonth = vOptionalInt(
+    formData.get("feedbackPeriodMonth") as string | null,
+    "フィードバック面談 実施月",
+    { min: 1, max: 12 }
+  );
 
   // テンプレ所有確認: テナント共有 or 自社専用
   const template = await prisma.evaluationTemplate.findFirst({
@@ -225,7 +252,7 @@ export async function createClientPeriod(formData: FormData) {
       OR: [{ clientId: null }, { clientId: session.user.clientId! }],
     },
   });
-  if (!template) return;
+  if (!template) throw new ValidationError("選択した評価制度が見つかりません。");
 
   const p = await prisma.evaluationPeriod.create({
     data: {
@@ -235,10 +262,10 @@ export async function createClientPeriod(formData: FormData) {
       half: half === "UPPER" || half === "LOWER" ? half : null,
       startDate,
       endDate,
-      selfEvalDueDate: dateOrNull(formData.get("selfEvalDueDate")),
-      primaryEvalDueDate: dateOrNull(formData.get("primaryEvalDueDate")),
-      finalEvalDueDate: dateOrNull(formData.get("finalEvalDueDate")),
-      feedbackPeriodMonth: Number(formData.get("feedbackPeriodMonth") || 0) || null,
+      selfEvalDueDate,
+      primaryEvalDueDate,
+      finalEvalDueDate,
+      feedbackPeriodMonth,
     },
   });
   revalidatePath("/client/periods");
@@ -260,12 +287,20 @@ export async function updateClientPeriodStatus(id: string, status: "DRAFT" | "OP
 export async function createEmployee(formData: FormData) {
   const session = await requireClientAdmin();
   const clientId = session.user.clientId!;
-  const employeeCode = String(formData.get("employeeCode") ?? "").trim();
-  const lastName = String(formData.get("lastName") ?? "").trim();
-  const firstName = String(formData.get("firstName") ?? "").trim();
-  const hireDateStr = String(formData.get("hireDate") ?? "");
-  if (!employeeCode || !lastName || !firstName || !hireDateStr) {
-    throw new Error("必須項目（社員番号・姓・名・入社日）が入力されていません。");
+  const employeeCode = vRequired(formData.get("employeeCode") as string | null, "社員番号");
+  const lastName = vRequired(formData.get("lastName") as string | null, "姓");
+  const firstName = vRequired(formData.get("firstName") as string | null, "名");
+  const hireDate = vDate(formData.get("hireDate") as string | null, "入社日");
+  // 未来日入社はビジネス的にあり得るが、極端な未来は拒否
+  const future = new Date();
+  future.setFullYear(future.getFullYear() + 1);
+  if (hireDate.getTime() > future.getTime()) {
+    throw new ValidationError("入社日は1年以内の日付にしてください。");
+  }
+  // メールアドレスの形式チェック（ログイン用は別途実施）
+  const optionalEmail = String(formData.get("email") ?? "").trim();
+  if (optionalEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(optionalEmail)) {
+    throw new ValidationError(`メールアドレスの形式が正しくありません: ${optionalEmail}`);
   }
 
   // 事前重複チェック（明確なメッセージを返す）
@@ -299,9 +334,9 @@ export async function createEmployee(formData: FormData) {
         firstName,
         lastNameKana: String(formData.get("lastNameKana") ?? "") || null,
         firstNameKana: String(formData.get("firstNameKana") ?? "") || null,
-        email: String(formData.get("email") ?? "") || null,
+        email: optionalEmail || null,
         phone: String(formData.get("phone") ?? "") || null,
-        hireDate: new Date(hireDateStr),
+        hireDate,
         departmentId: String(formData.get("departmentId") ?? "") || null,
         positionId: String(formData.get("positionId") ?? "") || null,
         gradeId: String(formData.get("gradeId") ?? "") || null,
@@ -485,18 +520,17 @@ export async function finalizeEvaluation(periodId: string, evaluationId: string)
 // ----- Wage / Leave -----
 export async function upsertWage(formData: FormData) {
   const session = await requireClientAdmin();
-  const employeeId = String(formData.get("employeeId") ?? "");
-  const yearMonth = String(formData.get("yearMonth") ?? "");
-  if (!employeeId || !yearMonth) return;
+  const employeeId = vRequired(formData.get("employeeId") as string | null, "従業員");
+  const yearMonth = vYearMonth(formData.get("yearMonth") as string | null, "対象年月");
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, clientId: session.user.clientId! },
   });
-  if (!employee) return;
+  if (!employee) throw new ValidationError("従業員が見つかりません。");
 
-  const basicSalary = Number(formData.get("basicSalary") ?? 0);
-  const overtimeAllowance = Number(formData.get("overtimeAllowance") ?? 0);
-  const otherAllowance = Number(formData.get("otherAllowance") ?? 0);
-  const deduction = Number(formData.get("deduction") ?? 0);
+  const basicSalary = vOptionalInt(formData.get("basicSalary") as string | null, "基本給", { min: 0 }) ?? 0;
+  const overtimeAllowance = vOptionalInt(formData.get("overtimeAllowance") as string | null, "残業手当", { min: 0 }) ?? 0;
+  const otherAllowance = vOptionalInt(formData.get("otherAllowance") as string | null, "その他手当", { min: 0 }) ?? 0;
+  const deduction = vOptionalInt(formData.get("deduction") as string | null, "控除", { min: 0 }) ?? 0;
   const netPay = basicSalary + overtimeAllowance + otherAllowance - deduction;
 
   await prisma.wageRecord.upsert({
@@ -525,16 +559,18 @@ export async function upsertWage(formData: FormData) {
 
 export async function upsertLeaveBalance(formData: FormData) {
   const session = await requireClientAdmin();
-  const employeeId = String(formData.get("employeeId") ?? "");
-  const year = Number(formData.get("year") ?? new Date().getFullYear());
-  if (!employeeId) return;
+  const employeeId = vRequired(formData.get("employeeId") as string | null, "従業員");
+  const year = vInt(formData.get("year") as string | null, "年", { min: 2000, max: 2100 });
   const employee = await prisma.employee.findFirst({
     where: { id: employeeId, clientId: session.user.clientId! },
   });
-  if (!employee) return;
+  if (!employee) throw new ValidationError("従業員が見つかりません。");
 
-  const granted = Number(formData.get("granted") ?? 0);
-  const used = Number(formData.get("used") ?? 0);
+  const granted = vFloat(formData.get("granted") as string | null, "付与日数", { min: 0, max: 365 });
+  const used = vFloat(formData.get("used") as string | null, "使用日数", { min: 0, max: 365 });
+  if (used > granted) {
+    throw new ValidationError("使用日数が付与日数を超えています。");
+  }
   const remaining = granted - used;
 
   await prisma.leaveBalance.upsert({
