@@ -78,7 +78,7 @@ export default async function LeavePage() {
         {balances.length === 0 ? (
           <Empty message="有給残高データがまだありません" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-1">年</th>

@@ -24,7 +24,7 @@ export default async function AdminTenantsPage() {
         <Empty message="テナントがまだありません" />
       ) : (
         <Card>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="bg-slate-50 text-slate-600 text-xs">
               <tr>
                 <th className="text-left px-4 py-2">テナント名</th>

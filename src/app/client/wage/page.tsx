@@ -87,7 +87,7 @@ export default async function WagePage() {
         {recent.length === 0 ? (
           <Empty message="賃金記録がまだありません" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-1">対象年月</th>

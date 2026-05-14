@@ -39,7 +39,7 @@ export default async function SrPeriodsPage() {
         <Empty message="評価期間がまだありません。" />
       ) : (
         <Card>
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="bg-slate-50 text-slate-600 text-xs">
               <tr>
                 <th className="text-left px-4 py-2">期間名</th>

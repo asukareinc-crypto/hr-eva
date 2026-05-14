@@ -123,7 +123,7 @@ export default async function PeriodDetailPage({
             まだ対象者が割り当てられていません。クライアント管理者画面から従業員を選択してください。
           </div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-1">従業員</th>

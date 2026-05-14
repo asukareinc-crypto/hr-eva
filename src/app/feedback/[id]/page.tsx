@@ -116,7 +116,7 @@ export default async function FeedbackPage({
           {evaluation.assignments.length === 0 ? (
             <div className="text-sm text-slate-500">評価データなし</div>
           ) : (
-            <table className="w-full text-xs">
+            <table className="w-full text-xs min-w-[560px] sm:min-w-0">
               <thead className="text-slate-500">
                 <tr>
                   <th className="text-left py-1">項目</th>

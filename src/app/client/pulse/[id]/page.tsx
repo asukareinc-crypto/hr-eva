@@ -136,7 +136,7 @@ export default async function ClientSurveyDetail({
         <p className="text-[11px] text-slate-500 mb-2">
           ※ 自由記述の内容は設問サマリ側で集約表示しており、個人別画面には個別の数値スコアのみ表示しています。
         </p>
-        <table className="w-full text-xs">
+        <table className="w-full text-xs min-w-[560px] sm:min-w-0">
           <thead className="text-slate-500">
             <tr>
               <th className="text-left py-1">従業員</th>

@@ -42,8 +42,8 @@ export default async function EmployeesPage() {
       {employees.length === 0 ? (
         <Empty message="従業員がまだ登録されていません。" />
       ) : (
-        <Card>
-          <table className="w-full text-sm">
+        <Card className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[640px]">
             <thead className="bg-slate-50 text-slate-600 text-xs">
               <tr>
                 <th className="text-left px-4 py-2">No.</th>

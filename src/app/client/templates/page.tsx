@@ -35,7 +35,7 @@ export default async function ClientTemplatesPage() {
         {shared.length === 0 ? (
           <Empty message="共有テンプレートはまだありません。" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-2">名称</th>
@@ -79,7 +79,7 @@ export default async function ClientTemplatesPage() {
         {own.length === 0 ? (
           <Empty message="自社テンプレートはまだありません。「新規作成」または上の共有テンプレを複製してください。" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-2">名称</th>

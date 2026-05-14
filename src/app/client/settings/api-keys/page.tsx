@@ -61,7 +61,7 @@ export default async function ClientApiKeysPage() {
         {keys.length === 0 ? (
           <Empty message="まだAPIキーが登録されていません。下のフォームから追加してください。" />
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-2">サービス</th>

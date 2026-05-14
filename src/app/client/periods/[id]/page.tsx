@@ -131,7 +131,7 @@ export default async function ClientPeriodDetailPage({
         {period.evaluations.length === 0 ? (
           <div className="text-sm text-slate-500">まだ対象者がいません。</div>
         ) : (
-          <table className="w-full text-sm">
+          <table className="w-full text-sm min-w-[600px] sm:min-w-0">
             <thead className="text-xs text-slate-500">
               <tr>
                 <th className="text-left py-1">従業員</th>
