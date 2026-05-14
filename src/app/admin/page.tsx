@@ -19,7 +19,7 @@ export default async function AdminDashboard() {
         <Stat label="テナント数" value={tenantCount} href="/admin/tenants" />
         <Stat label="クライアント企業" value={clientCount} />
         <Stat label="ユーザー" value={userCount} />
-        <Stat label="評価レコード" value={evaluationCount} />
+        <Stat label="評価レコード" value={evaluationCount} href="/admin/evaluations" />
       </div>
     </div>
   );

@@ -60,6 +60,10 @@ export async function GET(
   // アクセス制御（feedback ページと同等）
   const role = session.user.role;
   let canAccess = false;
+  // 運営（Super Admin）はサポート目的で全クライアントの PDF を閲覧可
+  if (role === "SUPER_ADMIN") {
+    canAccess = true;
+  }
   if (
     role === "SR_ADMIN" &&
     evaluation.period.client.tenantId === session.user.tenantId

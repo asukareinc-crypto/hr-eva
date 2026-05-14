@@ -66,9 +66,12 @@ export async function GET(
     return NextResponse.json({ error: "not found" }, { status: 404 });
   }
 
-  // アクセス制御: SR_ADMIN（同テナント）/ CLIENT_ADMIN（同クライアント）のみ
+  // アクセス制御: SUPER_ADMIN（運営・全件）/ SR_ADMIN（同テナント）/ CLIENT_ADMIN（同クライアント）
   const role = session.user.role;
   let canAccess = false;
+  if (role === "SUPER_ADMIN") {
+    canAccess = true;
+  }
   if (role === "SR_ADMIN" && period.client.tenantId === session.user.tenantId) {
     canAccess = true;
   }
