@@ -1,7 +1,8 @@
 import { renderToBuffer } from "@react-pdf/renderer";
-import type { ReactElement } from "react";
 import { NextResponse } from "next/server";
 import { ensureFonts } from "./base";
+
+type PdfDocument = Parameters<typeof renderToBuffer>[0];
 
 /**
  * PDF ドキュメントをレンダリングして application/pdf レスポンスを返す。
@@ -9,7 +10,7 @@ import { ensureFonts } from "./base";
  */
 export async function pdfResponse(
   request: Request,
-  doc: ReactElement,
+  doc: PdfDocument,
   filename: string
 ): Promise<NextResponse> {
   ensureFonts(new URL(request.url).origin);
