@@ -41,12 +41,20 @@ export default async function PeriodDetailPage({
         title={period.name}
         description={`${period.client.name} / ${period.template.name}`}
         actions={
-          <Link
-            href="/sr/periods"
-            className="text-sm text-slate-600 hover:text-slate-900 underline-offset-2 hover:underline"
-          >
-            ← 一覧へ
-          </Link>
+          <div className="flex items-center gap-3">
+            <a
+              href={`/api/pdf/period/${id}`}
+              className="text-sm text-slate-700 border border-slate-300 rounded px-2.5 py-1 hover:bg-slate-100"
+            >
+              サマリーPDF
+            </a>
+            <Link
+              href="/sr/periods"
+              className="text-sm text-slate-600 hover:text-slate-900 underline-offset-2 hover:underline"
+            >
+              ← 一覧へ
+            </Link>
+          </div>
         }
       />
 
@@ -129,6 +137,7 @@ export default async function PeriodDetailPage({
                 <th className="text-left py-1">従業員</th>
                 <th className="text-left py-1">ステータス</th>
                 <th className="text-left py-1">割当評価者</th>
+                <th className="text-right py-1"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -141,6 +150,14 @@ export default async function PeriodDetailPage({
                     <Badge>{e.status}</Badge>
                   </td>
                   <td className="py-1">{e.assignments.length}名</td>
+                  <td className="py-1 text-right">
+                    <a
+                      href={`/api/pdf/evaluation/${e.id}`}
+                      className="text-xs text-slate-700 underline"
+                    >
+                      評価PDF
+                    </a>
+                  </td>
                 </tr>
               ))}
             </tbody>

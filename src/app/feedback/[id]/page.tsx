@@ -86,9 +86,23 @@ export default async function FeedbackPage({
           title="フィードバック面談シート"
           description={`${target.lastName} ${target.firstName} / ${evaluation.period.name}`}
           actions={
-            <Link href="/" className="text-sm text-slate-600 underline-offset-2 hover:underline">
-              ← 戻る
-            </Link>
+            <div className="flex items-center gap-3">
+              <a
+                href={`/api/pdf/evaluation/${evaluationId}`}
+                className="text-sm text-slate-700 border border-slate-300 rounded px-2.5 py-1 hover:bg-slate-100"
+              >
+                評価シートPDF
+              </a>
+              <a
+                href={`/api/pdf/feedback/${evaluationId}`}
+                className="text-sm text-slate-700 border border-slate-300 rounded px-2.5 py-1 hover:bg-slate-100"
+              >
+                面談シートPDF
+              </a>
+              <Link href="/" className="text-sm text-slate-600 underline-offset-2 hover:underline">
+                ← 戻る
+              </Link>
+            </div>
           }
         />
 

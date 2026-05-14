@@ -65,7 +65,17 @@ export default async function ClientPeriodDetailPage({
       <PageHeader
         title={period.name}
         description={`${period.template.name} ・ ${period.startDate.toISOString().slice(0, 10)}〜${period.endDate.toISOString().slice(0, 10)}`}
-        actions={<Link href="/client/periods" className="text-sm text-slate-600 underline-offset-2 hover:underline">← 一覧へ</Link>}
+        actions={
+          <div className="flex items-center gap-3">
+            <a
+              href={`/api/pdf/period/${id}`}
+              className="text-sm text-slate-700 border border-slate-300 rounded px-2.5 py-1 hover:bg-slate-100"
+            >
+              サマリーPDF
+            </a>
+            <Link href="/client/periods" className="text-sm text-slate-600 underline-offset-2 hover:underline">← 一覧へ</Link>
+          </div>
+        }
       />
 
       <Card className="p-3 flex items-center justify-between">
@@ -160,7 +170,13 @@ export default async function ClientPeriodDetailPage({
                     <Badge tone={STATUS_TONE[e.status]}>{STATUS_LABEL[e.status]}</Badge>
                   </td>
                   <td className="py-2 text-right">
-                    <div className="inline-flex gap-2">
+                    <div className="inline-flex gap-2 items-center">
+                      <a
+                        href={`/api/pdf/evaluation/${e.id}`}
+                        className="text-xs text-slate-700 underline"
+                      >
+                        評価PDF
+                      </a>
                       {(e.status === "FINAL_DONE" || e.status === "MANAGER_DONE" || e.status === "FINALIZED") && (
                         <Link
                           href={`/feedback/${e.id}`}

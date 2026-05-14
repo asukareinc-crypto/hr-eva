@@ -27,6 +27,7 @@ export default auth((req) => {
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/manifest") ||
     pathname.startsWith("/icons") ||
+    pathname.startsWith("/fonts") ||
     pathname.startsWith("/sw.js");
 
   if (!session?.user) {
