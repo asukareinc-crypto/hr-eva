@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { requireSr } from "@/lib/guards";
 import { prisma } from "@/lib/prisma";
 import { Card, PageHeader } from "@/components/Shell";
-import { Badge, Btn } from "@/components/ui";
-import { updatePeriodStatus, sendReminderForPeriod } from "@/app/sr/actions";
+import { Badge, Btn, Field, Input, Select } from "@/components/ui";
+import { updatePeriodStatus, sendReminderForPeriod, updatePeriodMeta } from "@/app/sr/actions";
 
 const STATUS_LABEL: Record<string, string> = {
   DRAFT: "下書き",
@@ -111,6 +111,58 @@ export default async function PeriodDetailPage({
         <Stat label="進行中" value={(statusCount["SELF_IN_PROGRESS"] ?? 0) + (statusCount["MANAGER_IN_PROGRESS"] ?? 0)} />
         <Stat label="確定" value={statusCount["FINALIZED"] ?? 0} />
       </div>
+
+      <Card className="p-5">
+        <h2 className="font-semibold mb-3 text-sm">期間設定の編集</h2>
+        {period.status !== "DRAFT" && (
+          <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded p-2 mb-3">
+            この期間は既に <Badge tone={period.status === "OPEN" ? "green" : "yellow"}>{STATUS_LABEL[period.status]}</Badge> です。日付を変更すると、運用中の評価に影響する可能性があります。
+          </p>
+        )}
+        <form
+          action={async (fd) => {
+            "use server";
+            await updatePeriodMeta(id, fd);
+          }}
+          className="space-y-3 max-w-2xl"
+        >
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <Field label="期間名">
+              <Input name="name" defaultValue={period.name} required />
+            </Field>
+            <Field label="期">
+              <Select name="half" defaultValue={period.half ?? ""}>
+                <option value="">指定なし</option>
+                <option value="UPPER">上期（11月〜4月）</option>
+                <option value="LOWER">下期（5月〜10月）</option>
+              </Select>
+            </Field>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="評価対象期間 開始">
+              <Input type="date" name="startDate" defaultValue={period.startDate.toISOString().slice(0, 10)} required />
+            </Field>
+            <Field label="評価対象期間 終了">
+              <Input type="date" name="endDate" defaultValue={period.endDate.toISOString().slice(0, 10)} required />
+            </Field>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <Field label="自己評価 提出期限">
+              <Input type="date" name="selfEvalDueDate" defaultValue={period.selfEvalDueDate?.toISOString().slice(0, 10) ?? ""} />
+            </Field>
+            <Field label="一次評価者 提出期限">
+              <Input type="date" name="primaryEvalDueDate" defaultValue={period.primaryEvalDueDate?.toISOString().slice(0, 10) ?? ""} />
+            </Field>
+            <Field label="最終評価者 提出期限">
+              <Input type="date" name="finalEvalDueDate" defaultValue={period.finalEvalDueDate?.toISOString().slice(0, 10) ?? ""} />
+            </Field>
+          </div>
+          <Field label="フィードバック面談 実施月" hint="例: 6 や 12">
+            <Input type="number" name="feedbackPeriodMonth" min={1} max={12} defaultValue={period.feedbackPeriodMonth ?? ""} />
+          </Field>
+          <Btn type="submit">保存</Btn>
+        </form>
+      </Card>
 
       <Card className="p-4">
         <h2 className="font-semibold mb-2">評価項目（{period.template.items.length}件）</h2>

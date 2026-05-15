@@ -283,6 +283,51 @@ export async function updateClientPeriodStatus(id: string, status: "DRAFT" | "OP
   revalidatePath(`/client/periods/${id}`);
 }
 
+export async function updateClientPeriodMeta(id: string, formData: FormData) {
+  const session = await requireClientAdmin();
+  const period = await prisma.evaluationPeriod.findFirst({
+    where: { id, clientId: session.user.clientId! },
+  });
+  if (!period) throw new ValidationError("対象の評価期間が見つかりません。");
+
+  const name = vRequired(formData.get("name") as string | null, "期間名");
+  const half = String(formData.get("half") ?? "") as "UPPER" | "LOWER" | "";
+  const startDate = vDate(formData.get("startDate") as string | null, "評価対象期間 開始");
+  const endDate = vDate(formData.get("endDate") as string | null, "評価対象期間 終了");
+  vDateRange(startDate, endDate, "評価対象期間 開始", "評価対象期間 終了");
+
+  const selfEvalDueDate = vOptionalDate(formData.get("selfEvalDueDate") as string | null, "自己評価 提出期限");
+  const primaryEvalDueDate = vOptionalDate(formData.get("primaryEvalDueDate") as string | null, "一次評価者 提出期限");
+  const finalEvalDueDate = vOptionalDate(formData.get("finalEvalDueDate") as string | null, "最終評価者 提出期限");
+  if (selfEvalDueDate && primaryEvalDueDate) {
+    vDateOrder(selfEvalDueDate, primaryEvalDueDate, "自己評価 提出期限", "一次評価者 提出期限");
+  }
+  if (primaryEvalDueDate && finalEvalDueDate) {
+    vDateOrder(primaryEvalDueDate, finalEvalDueDate, "一次評価者 提出期限", "最終評価者 提出期限");
+  }
+  const feedbackPeriodMonth = vOptionalInt(
+    formData.get("feedbackPeriodMonth") as string | null,
+    "フィードバック面談 実施月",
+    { min: 1, max: 12 }
+  );
+
+  await prisma.evaluationPeriod.update({
+    where: { id },
+    data: {
+      name,
+      half: half === "UPPER" || half === "LOWER" ? half : null,
+      startDate,
+      endDate,
+      selfEvalDueDate,
+      primaryEvalDueDate,
+      finalEvalDueDate,
+      feedbackPeriodMonth,
+    },
+  });
+  revalidatePath("/client/periods");
+  revalidatePath(`/client/periods/${id}`);
+}
+
 // ----- Employees -----
 export async function createEmployee(formData: FormData) {
   const session = await requireClientAdmin();
