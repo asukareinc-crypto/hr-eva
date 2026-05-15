@@ -23,6 +23,7 @@ export default auth((req) => {
     pathname.startsWith("/api/cron/") ||
     pathname.startsWith("/monitoring") ||
     pathname.startsWith("/api/account/") ||
+    pathname.startsWith("/api/templates/sample-csv") ||
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon") ||
     pathname.startsWith("/manifest") ||

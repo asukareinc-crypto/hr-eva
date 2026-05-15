@@ -76,6 +76,7 @@ model Client {
   positions         Position[]
   grades            Grade[]
   evaluationPeriods EvaluationPeriod[]
+  evaluationTemplates EvaluationTemplate[]
   pulseQuestions    PulseQuestion[]
   pulseSurveys      PulseSurvey[]
   apiKeys           ClientApiKey[]
@@ -310,8 +311,9 @@ model EvaluationTemplate {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  tenant Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  items  EvaluationTemplateItem[]
+  tenant  Tenant                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client  Client?                  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  items   EvaluationTemplateItem[]
   periods EvaluationPeriod[]
 
   @@index([tenantId])
